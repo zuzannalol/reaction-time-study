@@ -1,5 +1,4 @@
 
-# Tu wstaw kod aplikacji
 import streamlit as st
 import random
 import time
@@ -19,13 +18,15 @@ stimuli = (
 )
 random.shuffle(stimuli)
 
-# Inicjalizacja
+# Inicjalizacja stanu aplikacji
 if "results" not in st.session_state:
     st.session_state.results = []
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0
 if "start_time" not in st.session_state:
     st.session_state.start_time = None
+if "experiment_started" not in st.session_state:
+    st.session_state.experiment_started = False
 
 # Funkcja do zapisania odpowiedzi
 def record_response(key):
@@ -45,35 +46,51 @@ def record_response(key):
         st.session_state.current_index += 1
         st.session_state.start_time = time.time()
 
-# Wyświetlanie bodźców
-if st.session_state.current_index < len(stimuli):
-    stimulus = stimuli[st.session_state.current_index]
-    st.write(f"**{stimulus['word']}**")
-    st.write("Naciśnij **Z** jeśli to prawdziwe słowo lub **M** jeśli to pseudowyraz.")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Z (Prawdziwe słowo)"):
-            record_response("z")
-    with col2:
-        if st.button("M (Pseudowyraz)"):
-            record_response("m")
-    
-    if st.session_state.start_time is None:
+# Wprowadzenie i ekran startowy
+if not st.session_state.experiment_started:
+    st.title("Eksperyment: Decyzje leksykalne")
+    st.write(
+        "Celem tego eksperymentu jest zmierzenie czasu reakcji na różne słowa.
+"
+        "Będziesz widzieć na ekranie słowo. Twoim zadaniem jest ocenienie, czy jest to prawdziwe słowo, czy pseudowyraz.
+"
+        "
+Instrukcje:
+"
+        "- Naciśnij **Z**, jeśli uważasz, że słowo jest prawdziwe.
+"
+        "- Naciśnij **M**, jeśli uważasz, że jest to pseudowyraz."
+    )
+    if st.button("START"):
+        st.session_state.experiment_started = True
         st.session_state.start_time = time.time()
-
 else:
-    # Koniec eksperymentu
-    st.write("Dziękujemy za udział w eksperymencie!")
-    st.write("Wyniki:")
-    df = pd.DataFrame(st.session_state.results)
-    st.dataframe(df)
+    # Wyświetlanie bodźców
+    if st.session_state.current_index < len(stimuli):
+        stimulus = stimuli[st.session_state.current_index]
 
-    # Pobierz wyniki jako CSV
-    csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        label="Pobierz wyniki jako CSV",
-        data=csv,
-        file_name="wyniki.csv",
-        mime="text/csv"
+        st.markdown(f"<h1 style='text-align: center; font-size: 72px;'>{stimulus['word']}</h1>", unsafe_allow_html=True)
+
+        # Kluczowe sterowanie klawiaturą
+        key = st.text_input("", value="", max_chars=1, key="key_input", type="password")
+        if key.lower() in ["z", "m"]:
+            record_response(key.lower())
+            st.experimental_rerun()
+
+    else:
+        # Koniec eksperymentu
+        st.write("Dziękujemy za udział w eksperymencie!")
+        st.write("Wyniki:")
+        df = pd.DataFrame(st.session_state.results)
+        st.dataframe(df)
+
+        # Pobierz wyniki jako CSV
+        csv = df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="Pobierz wyniki jako CSV",
+            data=csv,
+            file_name="wyniki.csv",
+            mime="text/csv"
+        )
+
     )
